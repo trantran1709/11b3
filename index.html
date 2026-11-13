@@ -173,5 +173,102 @@ $('saveRules').onclick=()=>{
 };
 render();
 </script>
-</body>
+<script>
+(() => {
+  if (document.getElementById('addRulePanel')) return;
+
+  const panel = document.createElement('div');
+  panel.id = 'addRulePanel';
+  panel.innerHTML = `
+    <button type="button" id="openNewRule" class="full">
+      + Thêm quy định
+    </button>
+    <div id="newRuleFields" hidden>
+      <label for="newRuleName">Tên nội dung mới</label>
+      <input id="newRuleName" maxlength="80"
+        placeholder="Ví dụ: Giữ vệ sinh lớp tốt">
+
+      <label for="newRulePoints">Điểm cộng hoặc trừ</label>
+      <input id="newRulePoints" type="number"
+        min="-100" max="100" step="1" value="1">
+
+      <p class="muted">
+        Nhập số dương để cộng, số âm để trừ.
+        Khi thêm, các quy định đang sửa cũng được lưu.
+      </p>
+      <button type="button" id="confirmNewRule"
+        class="primary full">Lưu và thêm quy định</button>
+    </div>
+  `;
+
+  document.getElementById('saveRules').after(panel);
+
+  const nameInput = document.getElementById('newRuleName');
+  const pointInput = document.getElementById('newRulePoints');
+  const fields = document.getElementById('newRuleFields');
+
+  document.getElementById('openNewRule').onclick = () => {
+    fields.hidden = !fields.hidden;
+    if (!fields.hidden) nameInput.focus();
+  };
+
+  document.getElementById('confirmNewRule').onclick = () => {
+    const name = nameInput.value.trim();
+    const raw = pointInput.value.trim();
+    const points = Number(raw);
+
+    if (!name) {
+      toast('Bạn nhập tên nội dung mới nhé.');
+      return;
+    }
+
+    if (!raw || !Number.isInteger(points) ||
+        points < -100 || points > 100) {
+      toast('Nhập điểm nguyên từ -100 đến 100.');
+      return;
+    }
+
+    // Giữ cả những quy định bạn đang chỉnh sửa.
+    const rows = [...document.querySelectorAll(
+      '#ruleSettings .ruleedit'
+    )];
+
+    if (rows.length !== state.rules.length) {
+      toast('Bạn tải lại trang rồi thử thêm nhé.');
+      return;
+    }
+
+    const updated = state.rules.map((rule, index) => {
+      const inputs = rows[index].querySelectorAll('input');
+      return {
+        ...rule,
+        name: inputs[0].value.trim(),
+        points: Number(inputs[1].value),
+        raw: inputs[1].value.trim()
+      };
+    });
+
+    if (updated.some(rule =>
+      !rule.name || !rule.raw ||
+      !Number.isInteger(rule.points) ||
+      rule.points < -100 || rule.points > 100
+    )) {
+      toast('Kiểm tra lại tên và điểm các mục đang sửa nhé.');
+      return;
+    }
+
+    state.rules = updated.map(({ raw, ...rule }) => rule);
+    state.rules.push({ id: uid(), name, points });
+
+    const saved = persist();
+    render();
+    nameInput.value = '';
+    pointInput.value = '1';
+
+    toast(saved
+      ? 'Đã lưu và thêm quy định mới.'
+      : 'Đã thêm tạm; chưa lưu được trên thiết bị.');
+  };
+})();
+</script></body>
 </html>
